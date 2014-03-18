@@ -1,0 +1,37 @@
+#!/bin/bash -el
+
+PHP_FPM_INI=/etc/php5/fpm/conf.d/999-tsuru.ini
+APP_DIR=/home/application/current
+SOURCE_DIR=/var/lib/tsuru
+${SOURCE_DIR}/base/deploy $@
+
+shift; shift
+export $@
+
+echo "Deploying on $(sudo /usr/sbin/php5-fpm -v | head -n1 | cut -f1 -d'-')"
+
+# Link php.ini from application directory to /etc/php5/fpm/conf.d/
+if [ -f ${APP_DIR}/php.ini ] && [ ! -e ${PHP_FPM_INI} ]; then
+   sudo ln -s ${APP_DIR}/php.ini ${PHP_FPM_INI} 
+fi
+
+THEME=$(cat $APP_DIR/theme)
+
+wget https://wordpress.org/latest.tar.gz -O $APP_DIR/latest.tar.gz
+tar -xzf $APP_DIR/latest.tar.gz -C $APP_DIR
+rm -fr $APP_DIR/latest.tar.gz
+cp -r $APP_DIR/$THEME $APP_DIR/wordpress/wp-content/themes
+cp $APP_DIR/wordpress/wp-config-sample.php $APP_DIR/wordpress/wp-config.php
+sed -i -e s/\'database_name_here\'/getenv\(\'WP_DB_NAME\'\)/ $APP_DIR/wordpress/wp-config.php
+sed -i -e s/\'username_here\'/getenv\(\'WP_DB_USER\'\)/ $APP_DIR/wordpress/wp-config.php
+sed -i -e s/\'password_here\'/getenv\(\'WP_DB_PASS\'\)/ $APP_DIR/wordpress/wp-config.php
+sed -i -e s/\'localhost\'/getenv\(\'WP_DB_HOST\'\)/ $APP_DIR/wordpress/wp-config.php
+
+echo 'Instalando plugins...'
+for PLUGIN in $(cat $APP_DIR/plugins); do
+  wget https://downloads.wordpress.org/plugin/$PLUGIN.zip -O $APP_DIR/wordpress/wp-content/plugins/$PLUGIN.zip
+  unzip -qq -o $APP_DIR/wordpress/wp-content/plugins/$PLUGIN.zip -d $APP_DIR/wordpress/wp-content/plugins
+  rm -fr $APP_DIR/wordpress/wp-content/plugins/$PLUGIN.zip
+done;
+
+python ${SOURCE_DIR}/hooks.py

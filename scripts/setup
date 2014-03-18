@@ -1,0 +1,32 @@
+#!/bin/bash -el
+
+FPM_INIT=/etc/init.d/php5-fpm
+FPM_CONF=/etc/php5/fpm/php-fpm.conf
+FPM_POOL_DIR=/etc/php5/fpm/pool.d
+SOURCE_DIR=/var/lib/tsuru
+source ${SOURCE_DIR}/config
+
+cp ${SOURCE_DIR}/configs/circusd-wordpress.ini /etc/circus/conf.d/wordpress.ini
+
+rm /etc/nginx/sites-enabled/*
+ln -s ${SOURCE_DIR}/configs/nginx-vhost.conf /etc/nginx/sites-enabled/
+
+# Disable PHP5-FPM startup job. We use circusd for that
+sudo /usr/sbin/update-rc.d php5-fpm disable
+sudo /usr/sbin/update-rc.d nginx disable
+
+# Change php-fpm init script to use circusctl
+rm ${FPM_INIT}
+ln -s ${SOURCE_DIR}/configs/php5-fpm.init ${FPM_INIT}
+
+# Change php-fpm configuration
+rm ${FPM_CONF}
+ln -s ${SOURCE_DIR}/configs/php-fpm.conf ${FPM_CONF}
+
+# Change default FPM Pool
+rm ${FPM_POOL_DIR}/www.conf
+ln -s ${SOURCE_DIR}/configs/tsuru-fpm-pool.conf ${FPM_POOL_DIR}/tsuru.conf
+
+# Creating a blank fpm-envs configuration and changing permissions
+touch /home/application/fpm-envs.conf
+chown ubuntu:ubuntu /home/application/fpm-envs.conf
