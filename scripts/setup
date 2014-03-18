@@ -4,7 +4,6 @@ FPM_INIT=/etc/init.d/php5-fpm
 FPM_CONF=/etc/php5/fpm/php-fpm.conf
 FPM_POOL_DIR=/etc/php5/fpm/pool.d
 SOURCE_DIR=/var/lib/tsuru
-source ${SOURCE_DIR}/config
 
 cp ${SOURCE_DIR}/configs/circusd-wordpress.ini /etc/circus/conf.d/wordpress.ini
 
